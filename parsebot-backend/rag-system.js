@@ -3,14 +3,14 @@ import fs from 'fs';
 
 class RAGSystem {
   constructor() {
-    this.documents = new Map(); // sessionId -> chunks
-    this.embeddings = new Map(); // sessionId -> embeddings
-    this.vectorIndex = new Map(); // sessionId -> FAISS-like index
-    this.chunkSize = 1000; // characters per chunk
-    this.chunkOverlap = 200; // overlap between chunks
+    this.documents = new Map();
+    this.embeddings = new Map(); 
+    this.vectorIndex = new Map(); 
+    this.chunkSize = 1000; 
+    this.chunkOverlap = 200; 
   }
 
-  // Simple text chunking function
+  
   chunkText(text, chunkSize = this.chunkSize, overlap = this.chunkOverlap) {
     const chunks = [];
     let start = 0;
@@ -19,7 +19,7 @@ class RAGSystem {
       const end = Math.min(start + chunkSize, text.length);
       let chunk = text.slice(start, end);
       
-      // Try to break at sentence boundaries
+      
       if (end < text.length) {
         const lastSentence = chunk.lastIndexOf('.');
         const lastNewline = chunk.lastIndexOf('\n');
@@ -35,7 +35,7 @@ class RAGSystem {
         start = end;
       }
       
-      if (chunk.trim().length > 50) { // Only add meaningful chunks
+      if (chunk.trim().length > 50) { 
         chunks.push({
           text: chunk.trim(),
           start: start - chunk.length,
@@ -47,15 +47,15 @@ class RAGSystem {
     return chunks;
   }
 
-  // Simple TF-IDF based similarity (lightweight alternative to embeddings)
+  
   calculateTFIDF(chunks) {
     const tfidf = new natural.TfIdf();
     const documents = chunks.map(chunk => chunk.text);
     
-    // Add all documents to TF-IDF
+   
     documents.forEach(doc => tfidf.addDocument(doc));
     
-    // Calculate TF-IDF scores for each document
+    
     const tfidfScores = documents.map((doc, docIndex) => {
       const scores = {};
       tfidf.listTerms(docIndex).forEach(item => {
@@ -67,18 +67,18 @@ class RAGSystem {
     return tfidfScores;
   }
 
-  // Find most relevant chunks based on query
+  
   findRelevantChunks(query, chunks, tfidfScores, topK = 3) {
     const queryTokens = new natural.WordTokenizer().tokenize(query.toLowerCase());
     const queryTfidf = new Map();
     
-    // Calculate query TF-IDF
+    
     queryTokens.forEach(token => {
       const cleanToken = natural.PorterStemmer.stem(token);
       queryTfidf.set(cleanToken, (queryTfidf.get(cleanToken) || 0) + 1);
     });
     
-    // Calculate similarity scores
+   
     const similarities = chunks.map((chunk, index) => {
       const scores = tfidfScores[index];
       let similarity = 0;
@@ -95,25 +95,24 @@ class RAGSystem {
       };
     });
     
-    // Sort by similarity and return top K
+    
     return similarities
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, topK)
       .filter(item => item.similarity > 0);
   }
 
-  // Store document chunks with RAG indexing
+ 
   storeDocument(sessionId, text, filename) {
     console.log(`Processing document for session: ${sessionId}`);
     
-    // Chunk the text
+    
     const chunks = this.chunkText(text);
     console.log(`Created ${chunks.length} chunks`);
     
-    // Calculate TF-IDF scores
     const tfidfScores = this.calculateTFIDF(chunks);
     
-    // Store in memory
+  
     this.documents.set(sessionId, {
       chunks,
       tfidfScores,
@@ -126,7 +125,7 @@ class RAGSystem {
     return chunks.length;
   }
 
-  // Retrieve relevant context for a query
+
   retrieveContext(sessionId, query, topK = 3) {
     const docData = this.documents.get(sessionId);
     if (!docData) {
@@ -135,7 +134,7 @@ class RAGSystem {
 
     console.log(`Searching for context: "${query}"`);
     
-    // Find relevant chunks
+    
     const relevantChunks = this.findRelevantChunks(
       query, 
       docData.chunks, 
@@ -145,7 +144,7 @@ class RAGSystem {
 
     console.log(`Found ${relevantChunks.length} relevant chunks`);
     
-    // Combine relevant chunks into context
+    
     const context = relevantChunks.map(item => ({
       text: item.chunk.text,
       similarity: item.similarity,
@@ -161,7 +160,7 @@ class RAGSystem {
     };
   }
 
-  // Clear document data
+ 
   clearDocument(sessionId) {
     this.documents.delete(sessionId);
     this.embeddings.delete(sessionId);
@@ -169,7 +168,7 @@ class RAGSystem {
     console.log(`Cleared document data for session: ${sessionId}`);
   }
 
-  // Get document info
+  
   getDocumentInfo(sessionId) {
     const docData = this.documents.get(sessionId);
     if (!docData) return null;
