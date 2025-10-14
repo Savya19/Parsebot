@@ -7,10 +7,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('🚀 Starting ParseBot - AI PDF Assistant...\n');
+console.log('Starting ParseBot - AI PDF Assistant...\n');
 
 // Start backend
-console.log('📡 Starting backend server...');
+console.log('Starting backend server...');
 const backend = spawn('npm', ['start'], {
   cwd: path.join(__dirname, 'parsebot-backend'),
   stdio: 'pipe',
@@ -27,7 +27,7 @@ backend.stderr.on('data', (data) => {
 
 // Wait a moment for backend to start, then start frontend
 setTimeout(() => {
-  console.log('\n🎨 Starting frontend development server...');
+  console.log('\n Starting frontend development server...');
   const frontend = spawn('npm', ['run', 'dev'], {
     cwd: path.join(__dirname, 'parsebot'),
     stdio: 'pipe',
@@ -44,7 +44,7 @@ setTimeout(() => {
 
   // Handle process termination
   process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down ParseBot...');
+    console.log('\n Shutting down ParseBot...');
     backend.kill();
     frontend.kill();
     process.exit(0);
@@ -52,11 +52,11 @@ setTimeout(() => {
 
 }, 3000);
 
-console.log('\n✨ ParseBot is starting up!');
-console.log('📄 Backend will be available at: http://localhost:3001');
-console.log('🎨 Frontend will be available at: http://localhost:5173');
-console.log('\n💡 Make sure to set your HF_API_KEY in parsebot-backend/.env');
-console.log('⏹️  Press Ctrl+C to stop both servers\n');
+console.log('\n ParseBot is starting up!');
+console.log('Backend will be available at: http://localhost:3001');
+console.log('Frontend will be available at: http://localhost:5173');
+console.log('\n Make sure to set your HF_API_KEY in parsebot-backend/.env');
+console.log('Press Ctrl+C to stop both servers\n');
 
 
 
