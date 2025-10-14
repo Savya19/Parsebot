@@ -35,23 +35,23 @@ if (!GEMINI_API_KEY) {
   );
 }
 
-// Initialize Gemini AI
+
 let genAI = null;
 if (GEMINI_API_KEY) {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 }
 
-// Initialize RAG system
+
 const ragSystem = new RAGSystem();
 
-// Rate limiting
+
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
   message: 'Too many requests from this IP, please try again later.'
 });
 
-// Middleware
+
 app.use(helmet());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -61,19 +61,19 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(limiter);
 
-// Create uploads directory if it doesn't exist
+
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Sessions persistence directory (to survive restarts)
+
 const sessionsDir = path.join(__dirname, 'sessions');
 if (!fs.existsSync(sessionsDir)) {
   fs.mkdirSync(sessionsDir, { recursive: true });
 }
 
-// Reload persisted sessions on startup
+
 try {
   const files = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.json'));
   for (const file of files) {
@@ -93,7 +93,7 @@ try {
   console.warn('Failed to reload persisted sessions:', e?.message);
 }
 
-// Configure multer for file uploads
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
@@ -107,7 +107,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 10 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
@@ -118,10 +118,9 @@ const upload = multer({
   }
 });
 
-// In-memory storage for PDF content (replaced by RAG system)
-// const pdfStore = new Map(); // Now using ragSystem for storage
 
-// Health check endpoint
+
+
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -130,14 +129,14 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Env check endpoint (non-sensitive)
+
 app.get('/env-check', (req, res) => {
   const present = Boolean(GEMINI_API_KEY);
-  const start = present ? String(GEMINI_API_KEY).slice(0, 4) : null; // e.g., "AI..."
+  const start = present ? String(GEMINI_API_KEY).slice(0, 4) : null; //
   res.json({ geminiKeyPresent: present, geminiKeyPrefix: start });
 });
 
-// Upload PDF endpoint
+
 app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
@@ -148,10 +147,10 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
     const sessionId = req.body.sessionId || 'default';
     console.log(`Upload received for sessionId=${sessionId}, filename=${req.file.originalname}`);
 
-    // Parse PDF using robust text extraction with fallbacks
+    
     let pdfText = '';
     try {
-      // Try using pdf-parse first
+     
       const pdfParse = (await import('pdf-parse')).default;
       const dataBuffer = fs.readFileSync(filePath);
       const pdfData = await pdfParse(dataBuffer);
@@ -159,7 +158,7 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
     } catch (error) {
       console.log('PDF-parse failed, trying pdfjs-dist fallback:', error?.message);
       try {
-        // Use the legacy Node build to avoid worker and file path issues
+        
         const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
         const getDocument = (pdfjsLib.getDocument || (pdfjsLib.default && pdfjsLib.default.getDocument));
         const data = new Uint8Array(fs.readFileSync(filePath));
@@ -175,12 +174,12 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
         pdfText = textParts.join('\n').trim();
       } catch (fallbackErr) {
         console.log('pdfjs-dist fallback failed:', fallbackErr?.message);
-        // Final fallback: placeholder text so the RAG flow still works
+        
         pdfText = `PDF file "${req.file.originalname}" was uploaded but text extraction failed.`;
       }
     }
     
-    // Persist session text to disk for reliability
+  
     try {
       const sessionPayload = { text: pdfText, filename: req.file.originalname };
       fs.writeFileSync(path.join(sessionsDir, `${sessionId}.json`), JSON.stringify(sessionPayload));
@@ -188,11 +187,10 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
       console.warn(`Failed to persist session ${sessionId}:`, persistErr?.message);
     }
 
-    // Store PDF content using RAG system
+   
     const chunkCount = ragSystem.storeDocument(sessionId, pdfText, req.file.originalname);
     console.log(`Stored document for sessionId=${sessionId}, chunks=${chunkCount}`);
 
-    // Clean up uploaded file
     fs.unlinkSync(filePath);
 
     res.json({
@@ -214,7 +212,7 @@ app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
   }
 });
 
-// Chat endpoint for asking questions about the PDF
+
 app.post('/api/chat', async (req, res) => {
   try {
     if (!GEMINI_API_KEY) {
@@ -235,7 +233,7 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Ensure session exists before attempting retrieval
+   
     const docInfo = ragSystem.getDocumentInfo(sessionId);
     if (!docInfo) {
       const existingIds = Array.from(ragSystem.documents?.keys?.() || []);
@@ -246,18 +244,18 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    // Get relevant context using RAG
+    
     const ragContext = ragSystem.retrieveContext(sessionId, message, 3);
 
-    // Prepare the RAG context
+    
     const contextText = ragContext.context.map(chunk => 
       `[Relevant Section - Similarity: ${chunk.similarity.toFixed(3)}]\n${chunk.text}`
     ).join('\n\n');
 
-    // Ensure we have context, fallback to all chunks if needed
+    
     let finalContext = contextText.trim() || ragContext.context.map(chunk => chunk.text).join('\n\n');
     
-    // If still empty, use a fallback message
+   
     if (!finalContext || finalContext.length === 0) {
       finalContext = `Document: ${ragContext.filename}\nContent: PDF text extraction may have failed. Please try re-uploading the document.`;
       console.log(`Using fallback context - no chunks found`);
@@ -292,7 +290,7 @@ ${contextText}
 User Question: ${message}
 Answer:`;
 
-    // Use Gemini API instead of Hugging Face
+  
     const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
     
     let responseText;
@@ -333,7 +331,7 @@ Answer:`;
 });
 
 
-// Get session info endpoint
+
 app.get('/api/session/:sessionId', (req, res) => {
   const { sessionId } = req.params;
   const docInfo = ragSystem.getDocumentInfo(sessionId);
@@ -353,7 +351,7 @@ app.get('/api/session/:sessionId', (req, res) => {
   });
 });
 
-// List all active sessions (for debugging)
+
 app.get('/api/sessions', (req, res) => {
   const all = [];
   for (const [id, info] of ragSystem.documents.entries()) {
@@ -367,7 +365,7 @@ app.get('/api/sessions', (req, res) => {
   res.json({ count: all.length, sessions: all });
 });
 
-// Clear session endpoint
+
 app.delete('/api/session/:sessionId', (req, res) => {
   const { sessionId } = req.params;
   
@@ -380,7 +378,7 @@ app.delete('/api/session/:sessionId', (req, res) => {
   }
 });
 
-// Error handling middleware
+
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
@@ -392,7 +390,7 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
+
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
