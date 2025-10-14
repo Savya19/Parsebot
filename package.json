@@ -1,0 +1,19 @@
+{
+  "name": "parsebot-full-stack",
+  "version": "1.0.0",
+  "description": "Full-stack PDF parsing chatbot with AI",
+  "scripts": {
+    "start": "node start-parsebot.js",
+    "install-all": "npm install && cd parsebot && npm install && cd ../parsebot-backend && npm install",
+    "setup": "npm run install-all && echo 'Setup complete! Please configure your OpenAI API key in parsebot-backend/.env'"
+  },
+  "keywords": ["pdf", "chatbot", "ai", "fullstack"],
+  "author": "",
+  "license": "MIT"
+}
+
+
+
+
+
+
