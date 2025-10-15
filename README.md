@@ -186,3 +186,6 @@ If you encounter any issues:
 - [ ] Advanced search within PDFs
 - [ ] Batch processing of multiple PDFs
 
+## Demo Video Link
+https://drive.google.com/file/d/1MbINlHwqXQR2HeYdqtNwYskpQ96QhOZD/view?usp=drive_link
+
